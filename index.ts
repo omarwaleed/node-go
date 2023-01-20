@@ -2,22 +2,29 @@ import * as fs from 'fs';
 import path from 'path';
 import { Worker } from 'worker_threads';
 
-async function go(fn: (..._: any) => any, ...args: any) {
+export const createWorkerFunction = (fn: (..._: any) => any): string => {
   if(typeof fn !== 'function') {
     throw new Error('fn is not a function');
   }
   const fnData = fn.toString();
+  return `
+  const { parentPort } = require('worker_threads');
+  const fn = ${fnData};
+  parentPort.on('message', (message) => {
+    const result = fn(...message);
+    parentPort.postMessage(result);
+  });
+  `;
+}
+
+async function go(fn: (..._: any) => any, ...args: any) {
+  if(typeof fn !== 'function') {
+    throw new Error('fn is not a function');
+  }
   return new Promise((resolve, reject) => {
-    const workerFileName = `worker-${new Date().valueOf()}.js`;
+    const workerFileName = `worker-${new Date().valueOf()}-${Math.round(Math.random() * Number.MAX_SAFE_INTEGER)}.js`;
     const workerFilePath = path.resolve(__dirname, workerFileName);
-    fs.writeFileSync(workerFilePath, `
-      const { parentPort } = require('worker_threads');
-      const fn = ${fnData};
-      parentPort.on('message', (message) => {
-        const result = fn(...message);
-        parentPort.postMessage(result);
-      });
-    `);
+    fs.writeFileSync(workerFilePath, createWorkerFunction(fn));
     const worker = new Worker(workerFilePath);
     worker.on('message', (result) => {
       resolve(result);
