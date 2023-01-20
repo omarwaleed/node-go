@@ -46,4 +46,15 @@ describe('go', () => {
     expect(error).toBeDefined();
     expect(value).toBeUndefined();
   });
+
+  it("should run multiple threads at the same time", async () => {
+    const results = await Promise.all([
+      go((a, b) => a + b, 1, 2),
+      go((a, b) => a + b, 3, 4),
+      go((a, b) => a + b, 5, 6),
+    ])
+    expect(results[0]).toBe(3);
+    expect(results[1]).toBe(7);
+    expect(results[2]).toBe(11);
+  })
 });
