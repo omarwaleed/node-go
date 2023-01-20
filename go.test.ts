@@ -66,4 +66,15 @@ describe('go', () => {
     }, 1, 2);
     expect(result).toBe(3);
   })
+
+  it("should allow importing of a module inside the running function", async () => {
+    const result = await go(() => {
+      const fs = require('fs');
+      const res = fs.readdirSync(".");
+      return res;
+    });
+    console.log(result)
+    expect(Array.isArray(result)).toBeTruthy();
+    expect((result as Array<string>).length).toBeGreaterThan(0);
+  })
 });
