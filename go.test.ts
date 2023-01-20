@@ -57,4 +57,13 @@ describe('go', () => {
     expect(results[1]).toBe(7);
     expect(results[2]).toBe(11);
   })
+
+  it("should run a gopher promise", async () => {
+    const fn = jest.fn();
+    const result = await go((a, b) => {
+      new Promise(resolve => resolve(fn()));
+      return a + b;
+    }, 1, 2);
+    expect(result).toBe(3);
+  })
 });
