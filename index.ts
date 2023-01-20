@@ -17,7 +17,7 @@ async function go(fn: (..._: any) => any, ...args: any) {
         const result = fn(...message);
         parentPort.postMessage(result);
       });
-    `.split("\t").join("").split("  ").join(""));
+    `);
     const worker = new Worker(workerFilePath);
     worker.on('message', (result) => {
       resolve(result);
