@@ -1,4 +1,4 @@
-import go from '.';
+import go, { register, unregister } from '.';
 
 describe('go', () => {
   it('should spawn a new thread and run it returning the result of the function in a promise', async () => {
@@ -73,8 +73,52 @@ describe('go', () => {
       const res = fs.readdirSync(".");
       return res;
     });
-    console.log(result)
     expect(Array.isArray(result)).toBeTruthy();
     expect((result as Array<string>).length).toBeGreaterThan(0);
+  })
+});
+
+describe('register/unregister', () => {
+  it("should register a new function", () => {
+    try {
+      const fn = jest.fn();
+      register('test', fn);
+    } catch (err) {
+      expect(err).toBeUndefined();
+    } finally {
+      // unregister('test');
+    }
+  });
+  it("should unregister a function", () => {
+    const fn = jest.fn();
+    register('test', fn);
+    unregister('test');
+  });
+  it("should succeed in unregister a function that doesn't exist", () => {
+    unregister('test');
+  });
+  it("should run a registered function", async () => {
+    // @ts-ignore
+    const fn = (a, b) => a + b;
+    register('test', fn);
+    const result = await go('test', 1, 2);
+    expect(result).toBe(3);
+    unregister('test');
+  })
+  it("should fail if you try to run a function that doesn't exist", async () => {
+    const t = async () => {
+      return go('test');
+    }
+    expect(t).rejects.toThrow();
+  })
+  it("should fail if you try to run a function that was unregistered", async () => {
+    // @ts-ignore
+    const fn = (a, b) => a + b;
+    register('test', fn);
+    unregister('test');
+    const t = async () => {
+      await go('test');
+    }
+    expect(t).rejects.toThrow();
   })
 });
