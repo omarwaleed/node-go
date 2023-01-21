@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import path from 'path';
 import { Worker } from 'worker_threads';
 
 const registeredFunctions: { [key: string]: string } = {};
@@ -30,10 +28,7 @@ export function register(name: string, fn: (..._: any) => any): void {
   if(typeof fn !== 'function') {
     throw Error('Invalid function');
   }
-  const workerFileName = `worker-${new Date().valueOf()}-${Math.round(Math.random() * Number.MAX_SAFE_INTEGER)}.js`;
-  const workerFilePath = path.resolve(__dirname, workerFileName);
-  fs.writeFileSync(workerFilePath, createWorkerFunction(fn));
-  registeredFunctions[name] = workerFileName;
+  registeredFunctions[name] = createWorkerFunction(fn);
 }
 
 export function unregister(name: string): void {
@@ -44,39 +39,27 @@ export function unregister(name: string): void {
     // throw Error('Function is not registered');
     return;
   }
-  fs.existsSync(path.resolve(__dirname, registeredFunctions[name]!)) &&
-  fs.unlinkSync(path.resolve(__dirname, registeredFunctions[name]!));
   delete registeredFunctions[name];
 }
 
-process.on('exit', () => {
-  for(const key in registeredFunctions) {
-    fs.existsSync(path.resolve(__dirname, registeredFunctions[key]!)) &&
-    fs.unlinkSync(path.resolve(__dirname, registeredFunctions[key]!));
-  }
-})
-
 async function go(fn: string | ((..._: any) => any), ...args: any) {
-  let registered = false;
-  let workerFileName: string | undefined;
+  let workerFunc: string | undefined;
   if(typeof fn === 'string') {
     if(!registeredFunctions[fn]) {
       throw Error('Function is not registered');
     }
-    workerFileName = registeredFunctions[fn];
-    registered = true;
+    // workerFileName = registeredFunctions[fn];
+    workerFunc = registeredFunctions[fn];
   } else {
     if(typeof fn !== 'function') {
       throw Error('fn is not a function');
     }
   }
-  workerFileName ??= `worker-${new Date().valueOf()}-${Math.round(Math.random() * Number.MAX_SAFE_INTEGER)}.js`;
-  const workerFilePath = path.resolve(__dirname, workerFileName);
   if (typeof fn === 'function') {
-    fs.writeFileSync(workerFilePath, createWorkerFunction(fn));
+    workerFunc = createWorkerFunction(fn);
   }
   return new Promise((resolve, reject) => {
-    const worker = new Worker(workerFilePath);
+    const worker = new Worker(workerFunc as string, { eval: true });
     worker.on('message', (result) => {
       resolve(result);
       worker.terminate();
@@ -86,9 +69,6 @@ async function go(fn: string | ((..._: any) => any), ...args: any) {
       worker.terminate();
     });
     worker.on('exit', (code) => {
-      if(!registered) {
-        fs.unlinkSync(workerFilePath);
-      }
       if(code !== 0) {
         reject(new Error('Worker stopped with exit code ' + code));
       }
